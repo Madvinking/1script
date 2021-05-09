@@ -1,0 +1,10 @@
+{
+  "lint": "eslint .",
+  "test": {
+    "script": "jest -",
+    "description": "run jest test",
+    "excludes": [
+      "test"
+    ]
+  }
+}

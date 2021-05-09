@@ -1,0 +1,52 @@
+{
+  "name": "1script",
+  "version": "0.0.1",
+  "description": "execute script from working folder",
+  "main": "src/index.js",
+  "bin": {
+    "xxc": "src/index.js",
+    "1script": "src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "scripty",
+    "excute scripts"
+  ],
+  "author": "Nir winkler <madvinking@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Madvinking/1script.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "clean": "rm -rf node_modules",
+    "ncu": "pnpm run upkg",
+    "test": "jest --config jest.config.js --silent=false full-cycle",
+    "test:watch": "jest --watch --config jest.config.js --silent=false full-cycle",
+    "lint": "eslint --quiet --color ."
+  },
+  "dependencies": {
+    "args": "5.0.1",
+    "app-root-path": "3.0.0"
+  },
+  "devDependencies": {
+    "pnpm": "6.2.5",
+    "husky": "6.0.0",
+    "eslint": "^7.25.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^3.4.0",
+    "npm-check-updates": "11.5.10",
+    "jest": "26.6.3",
+    "nodemon": "2.0.7",
+    "prettier": "^2.2.1"
+  },
+  "peerDependencies": {},
+  "volta": {
+    "node": "16.1.0"
+  }
+}

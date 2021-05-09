@@ -1,0 +1,6 @@
+{
+  "name": "test",
+  "scripts": {
+    "lint": "xxc APP=123 -- "
+  }
+}
