@@ -1,5 +1,5 @@
 {
-  "lint": "eslint .",
+  "lint": "eslint {{DIR}} {{YABLOLO}} .",
   "test": {
     "script": "jest -",
     "description": "run jest test",

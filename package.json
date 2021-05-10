@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "execute script from working folder",
   "main": "src/index.js",
+  "private": "true",
   "bin": {
     "xxc": "src/index.js",
     "1script": "src/index.js"
@@ -24,6 +25,10 @@
   "publishConfig": {
     "access": "public"
   },
+  "workspaces": [
+    "test",
+    "test2"
+  ],
   "scripts": {
     "clean": "rm -rf node_modules",
     "ncu": "pnpm run upkg",

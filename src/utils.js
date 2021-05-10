@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 const util = require('util');
-const exec = util.promisify(require('child_process').exec);
-const { join } = require('path');
 const fs = require('fs');
+const exec = util.promisify(require('child_process').exec);
+const { execSync } = require('child_process');
+const exists = util.promisify(require('fs').exists);
+const { join } = require('path');
 
 let max = 5;
 const getWorkspacesRoot = dir => {
@@ -21,24 +23,25 @@ const getWorkspacesRoot = dir => {
 const currentFolder = getWorkspacesRoot(process.cwd());
 const rootDir = require('app-root-path').path;
 
-async function getBinScriptIfExist(binScriptName) {
-  const currentFolderNodeModules = exec('npm root', { cwd: currentFolder });
-
+async function getBinScriptIfExist(binScriptName, cwd) {
+  const currentFolderNodeModules = exec('npm root', { cwd });
   const rootDirNodeModules = exec('npm root', { cwd: rootDir });
   const globalNodeModules = exec('npm root -g');
+
   const [{ stdout: current }, { stdout: root }, { stdout: globalFolder }] = await Promise.all([
     currentFolderNodeModules,
     rootDirNodeModules,
     globalNodeModules,
   ]);
+  const [a, b, c] = await Promise.all([
+    exists(`${current.trimEnd()}/.bin/${binScriptName}`),
+    exists(`${root.trimEnd()}/.bin/${binScriptName}`),
+    exists(`${globalFolder.trimEnd()}/.bin/${binScriptName}`),
+  ]);
+  if (a) return `${current.trimEnd()}/.bin/${binScriptName}`;
+  else if (b) return `${root.trimEnd()}/.bin/${binScriptName}`;
+  else if (c) return `${globalFolder.trimEnd()}/.bin/${binScriptName}`;
 
-  if (fs.existsSync(`${current.trimEnd()}/.bin/${binScriptName}`)) {
-    return `${current.trimEnd()}/.bin/${binScriptName}`;
-  } else if (fs.existsSync(`${root.trimEnd()}/.bin/${binScriptName}`)) {
-    return `${root.trimEnd()}/.bin/${binScriptName}`;
-  } else if (fs.existsSync(`${globalFolder.trimEnd()}/.bin/${binScriptName}`)) {
-    return `${globalFolder.trimEnd()}/.bin/${binScriptName}`;
-  }
   return binScriptName;
 }
 
@@ -57,11 +60,34 @@ let scriptsFile = (function getScritFile() {
 })();
 
 const scripts = require(scriptsFile);
+let workspaces;
+let client = 'npm run';
+if (fs.existsSync(join(rootDir, 'pnpm-workspace.yaml'))) {
+  client = 'pnpm run';
+  let workspacesList = execSync('pnpm list -r --depth -1', { cwd: rootDir }).toString();
 
+  workspaces = workspacesList.split('\n').reduce((acc, w) => {
+    if (w !== '') {
+      let [name, location] = w.split(' ');
+      acc.push({ name, location });
+    }
+    return acc;
+  }, []);
+} else if (fs.existsSync(join(rootDir, '.yarnrc'))) {
+  let workspacesList = JSON.parse(execSync('yarn --silent workspaces info --json', { cwd: rootDir }).toString());
+
+  workspaces = Object.entries(workspacesList).reduce((acc, [name, { location }]) => {
+    acc.push({ name, location });
+
+    return acc;
+  }, []);
+}
 module.exports = {
   scripts,
   getBinScriptIfExist,
   rootDir,
   currentFolder,
   getWorkspacesRoot,
+  workspaces,
+  client,
 };
