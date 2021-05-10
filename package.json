@@ -3,6 +3,7 @@
   "version": "0.0.3",
   "description": "execute script from working folder",
   "main": "src/index.js",
+  "private": "true",
   "bin": {
     "xxc": "src/index.js",
     "1script": "src/index.js"

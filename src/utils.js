@@ -93,12 +93,15 @@ if (fs.existsSync(join(rootDir, 'pnpm-workspace.yaml'))) {
 
 function getExecutionDir(path) {
   let cwd = workspaceFolder;
-
+  let workspace;
   if (path) {
-    let workspace = workspaces.find(({ name, location }) => name === path || location.endsWith(path));
+    workspace = workspaces.find(({ name, location }) => name === path || location.endsWith(path));
     if (workspace) cwd = workspace.location;
   }
 
+  if (!path || !workspace) {
+    console.log(`not found workspace for ${path}`);
+  }
   return cwd;
 }
 
@@ -133,7 +136,7 @@ if (indexOfRestParams > -1) {
 
 function getGlobalData(flags) {
   const data = {
-    filter: flags.F,
+    filter: flags.f,
     params: splitParams(flags.p),
     restParams: restGlobalParams,
   };
