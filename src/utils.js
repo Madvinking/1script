@@ -85,7 +85,7 @@ if (fs.existsSync(join(rootDir, 'pnpm-workspace.yaml'))) {
   let workspacesList = JSON.parse(execSync('yarn --silent workspaces info --json', { cwd: rootDir }).toString());
 
   workspaces = Object.entries(workspacesList).reduce((acc, [name, { location }]) => {
-    acc.push({ name, location });
+    acc.push({ name, location: join(rootDir, location) });
 
     return acc;
   }, []);
