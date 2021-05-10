@@ -1,5 +1,4 @@
 module.exports = {
-  lint: 'eslint {{DIR=HOPA}} {{YABLOLO}} .',
   test: {
     script: 'jest -',
     description: 'run jest test',

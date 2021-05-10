@@ -4,6 +4,6 @@
   "version": "1.0.0",
   "scripts": {
     "lint2": "eslint .",
-    "lint": "xxc DIR=src -- quick"
+    "lint": "eslint ."
   }
 }

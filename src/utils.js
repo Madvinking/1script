@@ -110,32 +110,43 @@ function getData(cwd, scriptName) {
 
   if (data.scripts[scriptName]) {
     data.script = data.scripts[scriptName];
-    if (data.script.startsWith('xxc') || data.script.startsWith('1script')) {
-      const [commandAndParams, restParams] = data.script.split(' -- ');
-      let [command, ...params] = commandAndParams.split(' ');
+    const [commandAndParams, restParams] = data.script.split(' -- ');
+    let [command, ...script] = commandAndParams.split(' ');
+    data.script = script.join(' ');
+    if (command.startsWith('xxc') || command.startsWith('1script')) {
       data.restParams = restParams;
-      data.params = splitParams(params.filter(p => p.includes('=')));
+      data.params = splitParams(script.filter(p => p.includes('=')));
+    } else {
+      data.command = command;
     }
   }
 
   return data;
 }
 
+const indexOfRestParams = process.argv.indexOf('--');
+let restGlobalParams;
+if (indexOfRestParams > -1) {
+  restGlobalParams = process.argv.splice(indexOfRestParams + 1).join(' ');
+  process.argv = process.argv.splice(0, indexOfRestParams);
+}
+
 function getGlobalData(flags) {
   const data = {
     filter: flags.F,
     params: splitParams(flags.p),
+    restParams: restGlobalParams,
   };
-  const indexOfRestParams = process.argv.indexOf('--');
-  if (indexOfRestParams > -1) {
-    data.restParams = process.argv.splice(indexOfRestParams + 1).join(' ');
-  }
 
   return data;
 }
 
 async function getFinalScript({ workspaceData, globalData, xccData } = {}) {
   const command = workspaceData.command || xccData.command;
+  if (!command) {
+    console.log('command not found in scripts file or in selected workspace folder');
+    process.exit(1);
+  }
 
   const params = { ...workspaceData.params, ...globalData.params };
 
@@ -145,24 +156,32 @@ async function getFinalScript({ workspaceData, globalData, xccData } = {}) {
 
   const commandExec = await getCommandPath(command, cwd);
 
-  let script = xccData.script;
+  let script;
 
-  Object.entries(params).forEach(([key, value]) => {
-    const reg = new RegExp(`{{${key}.*?}}`, 'g');
-    script = script.replace(reg, value);
-  });
+  if (workspaceData.command) {
+    script = workspaceData.script;
+  } else {
+    script = xccData.script;
 
-  script
-    .split(/ +/)
-    .filter(p => /\{\{.+?\}\}/.test(p))
-    .forEach(param => {
-      if (param.includes('=')) {
-        const [key, value] = param.split('=');
-        script = script.replace(param, value);
-      } else {
-        script = script.replace(param, '');
-      }
+    // inject parmas to xcc-sciprt
+    Object.entries(params).forEach(([key, value]) => {
+      const reg = new RegExp(`{{${key}.*?}}`, 'g');
+      script = script.replace(reg, value);
     });
+
+    // fill defaults and remove unused
+    script
+      .split(/ +/)
+      .filter(p => /\{\{.+?\}\}/.test(p))
+      .forEach(param => {
+        if (param.includes('=')) {
+          const [key, value] = param.replace(/(\{|\})/g, '').split('=');
+          script = script.replace(param, value);
+        } else {
+          script = script.replace(param, '');
+        }
+      });
+  }
 
   return `${commandExec} ${script} ${restParams}`;
 }

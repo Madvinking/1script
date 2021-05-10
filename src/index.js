@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 const { execSync } = require('child_process');
 const args = require('args');
-// const { join } = require('path');
 const { scripts, rootDir, getExecutionDir, getData, getGlobalData, getFinalScript } = require('./utils');
 
 args
@@ -22,8 +21,8 @@ async function exeCommand(name, xccData, flags) {
     if (xccData.before) {
       ({ script, cwd } = xccData.before(script, cwd, workspaceData));
     }
-    console.log('cwd: ', cwd);
-    console.log('script: ', script);
+
+    console.log('\033[32m', `running: '${script}', from: '${cwd}'`);
 
     execSync(script, { cwd, encoding: 'utf8', stdio: 'inherit' });
   } catch (err) {
@@ -45,4 +44,8 @@ Object.entries(scripts).forEach(([name, data]) => {
   }
 });
 
-args.parse(process.argv);
+const flags = args.parse(process.argv);
+const scriptName = process.argv[process.argv.length - 1];
+if (!scripts[scriptName]) {
+  exeCommand(scriptName, {}, flags);
+}
