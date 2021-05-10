@@ -96,7 +96,7 @@ function getExecutionDir(path) {
 
   if (path) {
     let workspace = workspaces.find(({ name, location }) => name === path || location.endsWith(path));
-    if (workspace) cwd = join(rootDir, workspace.location);
+    if (workspace) cwd = workspace.location;
   }
 
   return cwd;

@@ -22,7 +22,7 @@ async function exeCommand(name, xccData, flags) {
       ({ script, cwd } = xccData.before(script, cwd, workspaceData));
     }
 
-    console.log('\033[32m', `running: '${script}', from: '${cwd}'`);
+    console.log('\n\033[32m', `running: '${script}', from: '${cwd}'`, '\033[0m\n');
 
     execSync(script, { cwd, encoding: 'utf8', stdio: 'inherit' });
   } catch (err) {
