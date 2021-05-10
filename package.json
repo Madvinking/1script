@@ -1,6 +1,6 @@
 {
   "name": "1script",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "execute script from working folder",
   "main": "src/index.js",
   "private": "true",
