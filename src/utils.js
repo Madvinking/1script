@@ -5,7 +5,7 @@ const exec = util.promisify(require('child_process').exec);
 const { execSync } = require('child_process');
 const exists = util.promisify(require('fs').exists);
 const { join } = require('path');
-
+const { logger } = require('./logger');
 const rootDir = require('app-root-path').path;
 
 let max = 5;
@@ -15,7 +15,7 @@ const getWorkspacesRoot = dir => {
   if (fs.existsSync(pkg)) found = true;
   if (found) return dir;
   if (max === 0) {
-    console.log('no workspace project found');
+    logger.error('no workspace project found');
     process.exit(1);
   }
   max--;
@@ -55,7 +55,7 @@ let scriptsFile = (function getScritFile() {
   } else if (fs.existsSync(`${rootDir}/scripts.js`)) {
     return `${rootDir}/scripts.js`;
   } else {
-    console.log('no script file found');
+    logger.error('no script file found, please create script.js(on) file');
     process.exit(1);
   }
 })();
@@ -72,6 +72,7 @@ function splitParams(params = []) {
 
 let workspaces;
 if (fs.existsSync(join(rootDir, 'pnpm-workspace.yaml'))) {
+  logger.debug('using pnpm manager');
   let workspacesList = execSync('pnpm list -r --depth -1', { cwd: rootDir }).toString();
 
   workspaces = workspacesList.split('\n').reduce((acc, w) => {
@@ -82,6 +83,7 @@ if (fs.existsSync(join(rootDir, 'pnpm-workspace.yaml'))) {
     return acc;
   }, []);
 } else if (fs.existsSync(join(rootDir, '.yarnrc'))) {
+  logger.debug('using yarn manager');
   let workspacesList = JSON.parse(execSync('yarn --silent workspaces info --json', { cwd: rootDir }).toString());
 
   workspaces = Object.entries(workspacesList).reduce((acc, [name, { location }]) => {
@@ -100,7 +102,7 @@ function getExecutionDir(path) {
   }
 
   if (!path || !workspace) {
-    console.log(`not found workspace for ${path}`);
+    logger.warn(`no workspace found for ${path}`);
   }
   return cwd;
 }
@@ -147,7 +149,7 @@ function getGlobalData(flags) {
 async function getFinalScript({ workspaceData, globalData, xccData } = {}) {
   const command = workspaceData.command || xccData.command;
   if (!command) {
-    console.log('command not found in scripts file or in selected workspace folder');
+    logger.error('command not found in scripts file or in selected workspace folder');
     process.exit(1);
   }
 
