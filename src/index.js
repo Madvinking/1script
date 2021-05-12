@@ -1,95 +1,96 @@
 #!/usr/bin/env node
 const util = require('util');
-const { execSync } = require('child_process');
 const os = require('os');
-const fs = require('fs');
 const exec = util.promisify(require('child_process').exec);
 const cpuCount = os.cpus().length;
-const { LogLevel } = require('@logzio-node-toolbox/logger');
-const { logger, transporter } = require('./logger');
 const pLimit = require('p-limit');
 
-const args = require('args');
-const { scripts, getExecutionDir, getData, getGlobalData, getFinalScript, rootDir, workspaces } = require('./utils');
+const { Command, Option } = require('commander');
 
-args
-  .option('root', 'Force run script from project root')
-  .option('workspace', 'Workspace to run script on', '')
-  .option('filter', 'Run script for match filter parallel', '')
-  .option('logLevel', '1script loggeer level (silent, warn, info, error, debug)', 'info')
-  .option('disable-stdout', 'Disable script output')
-  .option('all', 'run script on all workspaces')
-  .option('params', 'Workspace to run script on', [])
-  .option('concurrency', 'Number of parallel scripts', cpuCount)
-  .option('sequential', 'Run script from all workspaces sequential');
+const { getScripts, getWorkspacesToRunOn, getWorkspaceData, getGlobalData, getFinalScript, getCwdToRun } = require('./utils');
 
-async function runCommand({ workspaceData, globalData, xccData, cwd }) {
-  try {
-    let script = await getFinalScript({ workspaceData, globalData, xccData });
+async function init() {
+  const program = new Command();
+  program.version('0.0.1', '-v, --version', 'output the current version');
+  program
+    .option('-r, --root', 'Force run script from project root', false)
+    .option('-w, --workspace <name|path>', 'Workspace to run script on')
+    .option('-f, --filter <reg>', 'Run script for match filter parallel')
+    .addOption(new Option('-l, --log-level <type>', '1script loggeer level', 'info').choices(['silent', 'debug', 'info']))
+    .option('-d, --disable-stdout', 'Disable script output', false)
+    .option('-a, --all', 'run script on all workspaces', false)
+    .option('-p, --params [list...]', 'Workspace to run script on')
+    .option('-c --concurrency <number>', `Number of parallel scripts`, cpuCount)
+    .option('-s, --sequential', 'Run script from all workspaces sequential', false);
 
-    if (xccData.before) ({ script, cwd } = xccData.before(script, cwd, workspaceData));
+  async function runCommand({ workspaceData, globalData, xccData, cwd }) {
+    try {
+      let script = await getFinalScript({ workspaceData, globalData, xccData });
 
-    logger.log(`running: '${script}', from: '${cwd}'`);
+      if (xccData.before) ({ script, cwd } = xccData.before(script, cwd, workspaceData));
 
-    //TODO need to color output maybe use spwn instead
-    const { stdout } = await exec(script, {
-      cwd,
-      encoding: 'utf8',
-    });
+      console.log(`${workspaceData.name}: ${script}`);
 
-    console.log(stdout);
-  } catch (err) {
-    console.log(err.stdout ? err.stdout : err);
-  }
-}
-
-async function exeCommand(name, xccData, flags) {
-  try {
-    let cwd = flags.r ? rootDir : getExecutionDir(flags.w);
-
-    const globalData = getGlobalData(flags);
-    if (flags.a) {
-      const limit = pLimit(cpuCount);
-      const worksapcesListPromises = workspaces.map(({ location }) => {
-        return limit(() => runCommand({ globalData, workspaceData: getData(location, name), xccData, cwd: location }));
+      const { stdout } = await exec(script, {
+        cwd,
+        encoding: 'utf8',
       });
 
-      await Promise.all(worksapcesListPromises);
-    } else if (flags.f) {
-      const limit = pLimit(cpuCount);
-      const worksapcesListPromises = workspaces
-        .filter(({ name, location }) => {
-          const reg = new RegExp(flags.f);
-          return reg.test(name) || reg.test(location);
-        })
-        .map(({ location }) => {
-          return limit(() => runCommand({ globalData, workspaceData: getData(location, name), xccData, cwd: location }));
-        });
-
-      await Promise.all(worksapcesListPromises);
-    } else {
-      await runCommand({ globalData, workspaceData: getData(cwd, name), xccData, cwd });
+      console.log(stdout);
+    } catch (err) {
+      console.error(err.stdout || err.stderr || err);
     }
-  } catch (err) {
-    logger.error(err);
   }
-}
 
-Object.entries(scripts).forEach(([name, data]) => {
-  if (data instanceof Object) {
-    const [command, ...script] = data.script.split(' ');
-    args.command(name, data.description || '', (a, b, flags) =>
-      exeCommand(name, { script: script.join(' '), command, filter: data.filter, before: data.before }, flags),
-    );
-  } else {
-    const [command, ...script] = data.split(' ');
-    args.command(name, data, (a, b, flags) => {
-      exeCommand(name, { script: script.join(' '), command }, flags);
+  async function calculateCommand(name, xccData) {
+    const flags = program.opts();
+
+    try {
+      if (flags.logLevel === 'silent') {
+        console.log = () => { };
+      }
+      const globalData = getGlobalData(flags);
+      if (flags.all || flags.filter) {
+        console.log(1);
+        const limit = pLimit(cpuCount);
+        const worksapcesListPromises = getWorkspacesToRunOn(flags).map(({ location }) =>
+          limit(() => runCommand({ globalData, workspaceData: getWorkspaceData(location, name), xccData, cwd: location })),
+        );
+        console.log(`running script on ${worksapcesListPromises.length} workspaces`);
+        await Promise.all(worksapcesListPromises);
+      } else {
+        let cwd = getCwdToRun(flags);
+        await runCommand({ globalData, workspaceData: getWorkspaceData(cwd, name), xccData, cwd });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  const scripts = getScripts();
+
+  if (scripts) {
+    Object.entries(scripts).forEach(([name, data]) => {
+      if (data instanceof Object) {
+        const [command, ...script] = data.script.split(' ');
+        program
+          .command(name)
+          .description(data.description || data.script)
+          .action(() => calculateCommand(name, { script: script.join(' '), command, filter: data.filter, before: data.before }));
+      } else {
+        const [command, ...script] = data.split(' ');
+        program
+          .command(name)
+          .description(data)
+          .action(() => calculateCommand(name, { script: script.join(' '), command }));
+      }
     });
   }
-});
 
-const flags = args.parse(process.argv);
-transporter.logLevel = LogLevel[flags.l.toUpperCase()];
-const scriptName = process.argv[process.argv.length - 1];
-if (!scripts[scriptName]) exeCommand(scriptName, {}, flags);
+  program.parse();
+  const scriptName = process.argv[process.argv.length - 1];
+
+  if (!scripts[scriptName]) calculateCommand(scriptName, {});
+}
+
+init();

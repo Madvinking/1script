@@ -8,3 +8,4 @@ packages/test/*
 **/_isolated_other_/
 **/.DS_Store
 .DS_Store
+**/.pnpm-debug.log

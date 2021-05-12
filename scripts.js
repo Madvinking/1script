@@ -1,4 +1,5 @@
 module.exports = {
+  lint: 'eslint --color src',
   test: {
     script: 'jest {HOLA=asd}',
     description: 'run jest test',

@@ -3,7 +3,6 @@
   "private": "true",
   "version": "1.0.0",
   "scripts": {
-    "lint2": "eslint .",
-    "lint": "eslint ."
+    "lint": "sleep 3 && echo 1"
   }
 }
