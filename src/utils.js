@@ -77,7 +77,7 @@ function splitParams(params = []) {
 }
 
 let workspaces;
-let client = 'npx';
+let client = 'npm run';
 
 function getClient() {
   return client;
@@ -86,7 +86,7 @@ function getWorkspaces() {
   if (workspaces) return workspaces;
   if (fs.existsSync(join(rootDir, 'pnpm-workspace.yaml'))) {
     console.log('using pnpm manager');
-    client = 'pnpx';
+    client = 'pnpm run';
     let workspacesList = execSync('pnpm list -r --depth -1', { cwd: rootDir }).toString();
 
     workspaces = workspacesList.split('\n').reduce((acc, w) => {
@@ -224,6 +224,11 @@ function getCwdToRun(flags) {
   return cwd;
 }
 
+async function getNpmBin(cwd) {
+  const name = await exec('npm root', { cwd });
+  return name.stdout.trim();
+}
+
 module.exports = {
   getCwdToRun,
   getScripts,
@@ -233,4 +238,5 @@ module.exports = {
   getGlobalData,
   getFinalScript,
   getClient,
+  getNpmBin,
 };
